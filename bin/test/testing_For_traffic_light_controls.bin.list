@@ -1,0 +1,74 @@
+EMU8086 GENERATED LISTING. MACHINE CODE <- SOURCE.
+ 
+testing_For_traffic_light_controls.bin -- emu8086 assembler version: 4.08  
+ 
+[ 4/13/2026  --  1:22:57 PM ] 
+ 
+===================================================================================================
+[LINE]     LOC: MACHINE CODE                          SOURCE
+===================================================================================================
+ 
+[   1]        :                                       ; Traffic Light Controller
+[   2]        :                                       ; Ver. 0.0.1
+[   3]        :                                       
+[   4]        :                                       ; Initialize traffic light
+[   5]        :                                       #start=Traffic_Lights.exe#  ; Required to launch the simulator in Emu8086
+[   6]        :                                       
+[   7]        :                                       .data
+[   8]        :                                       ; Internal Light Colors
+[   9]        :                                       	Green EQU 2
+[  10]        :                                       	Yellow EQU 1
+[  11]        :                                       	Red EQU 0
+[  12]        :                                       ; Traffic Light Controls
+[  13]        :                                       TL_Port EQU 4               ; Send to Port 4
+[  14]        :                                       	TL_Green_Cmd EQU 00000100b      ; Bit 2 = Green ON
+[  15]        :                                       	TL_Yellow_Cmd EQU 00000010b     ; Bit 1 = Yellow ON
+[  16]        :                                       	TL_Red_Cmd EQU 00000001b        ; Bit 0 = Red ON
+[  17]        :                                       	;Debugging Controls
+[  18]        :                                       	TEST_TL_All_Cmd EQU 00000111b       ; Test pattern for diagnostic, all lights
+[  19]        :                                       TEST_TL_Chaos_L_Cmd EQU 00100100b   ; low byte, Test pattern for diagnostic, all lights
+[  20]        :                                       TEST_TL_Chaos_H_Cmd EQU 00001001b   ; high byte, Test pattern for diagnostic, all lights
+[  21]        :                                       ; Time Durations
+[  22]        :                                       	Emergency_Red_Dur EQU 9s             ; (as Red Light)
+[  23]        :                                       	Ped_Walk_Dur EQU 8s                ; (as Red Light)  CONSIDER; LED COUNT DOWN?
+[  24]        :                                       Green_Dur EQU 3s
+[  25]        :                                       	Yellow_Dur EQU 3s
+[  26]        :                                       	Red_Dur EQU 3s
+[  27]        :                                       
+[  28]        :                                       
+[  29]    0000: B0 04                                 MOV AL, TL_Green_Cmd            ; Set traffic light green
+[  30]    0002: E6 04                                 OUT TL_Port, AL                 ; Send to Traffic Light Port
+[  31]    0004: E8 16 00                              CALL DELAY                      ; Wait
+[  32]        :                                       
+[  33]    0007: B0 02                                 MOV AL, TL_Yellow_Cmd
+[  34]    0009: E6 04                                 OUT TL_Port, AL
+[  35]    000B: E8 0F 00                              CALL DELAY
+[  36]        :                                       
+[  37]    000E: B0 07                                 MOV AL, TEST_TL_All_Cmd             ;Diagnositic Lights, Bit 0,1,2 all 1 (on)
+[  38]    0010: E6 04                                 OUT TL_Port, AL
+[  39]    0012: E8 08 00                              CALL DELAY
+[  40]        :                                       
+[  41]    0015: B0 01                                 MOV AL, TL_Red_Cmd                  ; Bit 0 = Red ON
+[  42]    0017: E6 04                                 OUT TL_Port, AL
+[  43]    0019: E8 01 00                              CALL DELAY
+[  44]        :                                       
+[  45]    001C: F4                                    HLT                        ; Terminate program
+[  46]        :                                       
+[  47]        :                                       ; --- Delay Procedure using Interrupt 15h ---
+[  48]    001D:                                       DELAY PROC
+[  49]    001D: B4 86                                 MOV AH, 86h            ; BIOS wait function
+[  50]    001F: B9 1E 00                              MOV CX, 001Eh          ; High word of microseconds
+[  51]    0022: BA 80 84                              MOV DX, 8480h          ; Low word (001E8480h = 2,000,000us = 2s)
+[  52]    0025: CD 15                                 INT 15h                ; Trigger BIOS delay
+[  53]    0027: C3                                    RET
+[  54]        :                                       DELAY ENDP
+[  55]        :                                       
+[  56]        :                                       
+ 
+===================================================================================================
+ 
+
+
+
+
+===================================================================================================
