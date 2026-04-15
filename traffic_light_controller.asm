@@ -81,7 +81,7 @@ USER_INPUT PROC
 	
 USER_INPUT ENDP
 
-;Emergency - Process transition for emer
+;Emergency - Process transition for emergency
 EMERGENCY PROC
 	;ROXANNE (red light)
 	
