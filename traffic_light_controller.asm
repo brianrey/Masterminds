@@ -22,15 +22,15 @@
     
 .data
     app_welcome DB 'Traffic Light Controller'
-    app_description 'Designed to controll a single traffic light and handle Prdestrian and Emergency situations.'
+    app_description DB 'Designed to controll a single traffic light and handle Prdestrian and Emergency situations.'
     app_authors DB 'Created by Masterminds: Connor, Brian, Wyatt'
     newline DB 0DH, 0AH, '$'
 
-.ode
+.code
 ;Initialize - Initialize the data segment
 INITIALIZE PROC
     MOV AX, @DATA
-    MOV DS, AS
+    MOV DS, AX
 INITIALIZE ENDP
 
 ;Main - Main traffic light control loop
