@@ -13,7 +13,7 @@ ORG 100h
 	Green EQU 2 
 	Yellow EQU 1
 	Red EQU 0
-	Delay_Time EQU 00050H			; Adjust this value for timing speed	
+	Delay_Time EQU 00002H			; Adjust this value for timing speed	
 	Current_TL_State DW 00000000b  ; 16 bits to store data in memory (planning for all lights)
 	
 ; Traffic Light Controls (only one light as of now)
@@ -27,6 +27,8 @@ ORG 100h
     app_welcome DB 'Traffic Light Controller', 0DH, 0AH, '$'
     app_description DB 'Designed to control a single traffic light and handle Pedestrian and Emergency situations.', 0DH, 0AH, '$'
     app_authors DB 'Created by Masterminds: Connor, Brian, Wyatt', 0DH, 0AH, '$'
+    app_initialized DB 'Application Initialized. Waiting for input...', 0DH, 0AH, '$'
+
 	; Application Variables
     PEDESTRIAN_PASS_PENDING DB 0 ; 0 = None, 1 = Waiting for Red light so it can be lengthened
     EMERGENCY_PENDING DB 0      ; 0 = None, 1 = Priority Red requested
@@ -38,6 +40,7 @@ ORG 100h
 INITIALIZE PROC
     MOV AX, @DATA
     MOV DS, AX
+
     RET
 INITIALIZE ENDP
 
@@ -50,14 +53,16 @@ WELCOME_CONTENT PROC
     INT 21H						; Display Description
     LEA DX, app_authors
     INT 21H						; Display Authors
+    LEA DX, app_initialized
+    INT 21H                     ; Display initialized message
     RET
 WELCOME_CONTENT ENDP
 
 ;Main - Main traffic light control loop
 MAIN PROC
 	; This section is only run once
-    CALL INITIALIZE
-	CALL WELCOME_CONTENT
+    CALL INITIALIZE                 ; Initialize application
+	CALL WELCOME_CONTENT            ; Print welcome messages
 
 MAIN_LOOP:
 	CALL GREEN_PROC
@@ -74,8 +79,8 @@ GREEN_PROC PROC
     MOV CX, 10          			; 10 units of time
 
 GREEN_LOOP:
-    CALL USER_INPUT     			; Polling for 'p', 'e', 'q', 'P', 'E', 'Q'
-    CALL DELAY
+    CALL USER_INPUT     			; Check for user input
+    CALL DELAY                      ; Call time delay for light
     LOOP GREEN_LOOP     			; Decrements CX and repeats
 	RET
 GREEN_PROC ENDP
@@ -88,8 +93,8 @@ YELLOW_PROC PROC
     MOV CX, 5           			; 5 units of time
 
 YELLOW_LOOP:
-    CALL USER_INPUT					; Polling for 'p', 'e', 'q', 'P', 'E', 'Q'
-    CALL DELAY
+    CALL USER_INPUT					; Check for user input
+    CALL DELAY                      ; Call time delay for light
     LOOP YELLOW_LOOP				; Decrements CX and repeats
 	RET
 YELLOW_PROC ENDP
@@ -110,43 +115,44 @@ RED_PROC PROC
     JMP RED_LOOP
 
 CHECK_PED_PASS_PENDING:
-    ; Check if a pedestrian is waiting
+    ; Check if a pedestrian is waiting, otherwise normal red
     CMP PEDESTRIAN_PASS_PENDING, 1
     JNE RED_LOOP
-    ADD CX, 10         					; Add extra time for the waiting pedestrian
-    MOV PEDESTRIAN_PASS_PENDING, 0 		; Clear the flag
+
+    ADD CX, 10         	            ; Add extra time for the waiting pedestrian
+    MOV PEDESTRIAN_PASS_PENDING, 0  ; Clear the flag
 
 RED_LOOP:
-    CALL USER_INPUT			; Polling for 'p', 'e', 'q', 'P', 'E', 'Q'
-    CALL DELAY
-    LOOP RED_LOOP			; Decrements CX and repeats
+    CALL USER_INPUT		; Check for user input
+    CALL DELAY          ; Call time delay for light
+    LOOP RED_LOOP		; Decrements CX and repeats
 	RET
 RED_PROC ENDP
 
 ;Input Check - Check for user char input and compare to known input controls (p, e, q), Non-blocking
 USER_INPUT PROC
-	MOV AH, 01H         ; Check keyboard buffer
+	MOV AH, 01H         ; Check keyboard buffer for character
 	INT 16H
-	JZ NO_INPUT         ; ZF=1 means no key pressed
+	JZ NO_INPUT         ; ZF=1 (Zero Flag) means no key pressed
 	
-	MOV AH, 00H         ; Read key into AL
+	MOV AH, 00H         ; Read character into AL
 	INT 16H
 
 	; Check for commands
 	CMP AL, 'p'
-	JE CALL_PED
+	JE CALL_PED         ; Check for lower case 'p'
 	CMP AL, 'P'
-	JE CALL_PED
+	JE CALL_PED         ; Check for upper case 'P'
 	
 	CMP AL, 'e'
-	JE CALL_EMER
+	JE CALL_EMER        ; Check for lower case 'e'
 	CMP AL, 'E'
-	JE CALL_EMER
+	JE CALL_EMER        ; Check for upper case 'E'
 	
 	CMP AL, 'q'
-	JE EXIT_PROGRAM
+	JE EXIT_PROGRAM     ; Check for lower case 'q'
 	CMP AL, 'Q'
-	JE EXIT_PROGRAM
+	JE EXIT_PROGRAM     ; Check for upper case 'Q'
 	
 	RET					; return if no matching input
 
@@ -168,22 +174,26 @@ EXIT_PROGRAM:
 
 ;Delay - Software delay loop for timing, rough second
 DELAY PROC
-    PUSH CX
-    MOV CX, Delay_Time      ; Adjust this value for timing speed at the top of the application code.
+    PUSH BX                 ; Store the current BX so we don't clobber it, if any.
+    MOV BX, Delay_Time      ; Adjust this value for timing speed at the top of the application code.
+
 DELAY_LOOP:
-    NOP
-    LOOP DELAY_LOOP
-    POP CX
+    CALL USER_INPUT         ; Check for user input during delay
+    NOP                     ; No operation
+    DEC BX                  ; Decrement our separate delay counter, to allow for CX and BX usage at the same time for looping
+    JNZ DELAY_LOOP          ; Repeat delay loop until BX is 0
+    POP BX                  ; Restore the current BX
     RET
 DELAY ENDP
 
 ;Emergency - Process transition for emergency
 EMERGENCY PROC
 	; Check current state in Current_TL_State
-    CMP Current_TL_State, Red
+    CMP Current_TL_State, Red       ; Internal state tracking check
 	JE RED_EMER
+    ; check for yellow - see paired comment just below   TODO
     
-    ; If Green or Yellow, speed up transition to Red
+    ; If Green or Yellow, speed up transition to Red (YELLOW SHOULD BE THE SAME AS NORMAL  TODO)
     MOV CX, 1
     MOV EMERGENCY_PENDING, 1
     RET
@@ -221,9 +231,8 @@ RED_PED:
     RET
 PEDESTRIAN ENDP
 
+;Traffic Light Command - Send the color command to the traffic light (caller sets AX to desired color prior to calling this procedure).
 CMD_TRAFFIC_LIGHT PROC
-	; caller puts the color in AX
 	OUT TL_Port, AX
 	RET
 CMD_TRAFFIC_LIGHT ENDP
-    
