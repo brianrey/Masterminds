@@ -13,6 +13,14 @@ ORG 100h
 	Green EQU 2 
 	Yellow EQU 1
 	Red EQU 0
+	
+	GREEN_TIME EQU 10
+	YELLOW_TIME EQU 3
+	RED_TIME EQU 15
+	
+	EMERGENCY_TIME EQU 20
+	PED_TIME EQU 10
+	
 	Delay_Time EQU 00002H			; Adjust this value for timing speed	
 	Current_TL_State DW 00000000b  ; 16 bits to store data in memory (planning for all lights)
 	
@@ -76,7 +84,7 @@ GREEN_PROC PROC
     MOV Current_TL_State, Green 	; Sets Current_TL_State to Green for internal tracking of current light.
 	MOV AX, TL_Green_Cmd			; Sets AX to Green command for the CMD_TRAFFIC_LIGHT procedure
 	CALL CMD_TRAFFIC_LIGHT			; Sends the ligt set in AX to the configured traffic light port
-    MOV CX, 10          			; 10 units of time
+    MOV CX, GREEN_TIME          	; 10 units of time
 
 GREEN_LOOP:
     CALL USER_INPUT     			; Check for user input
@@ -90,7 +98,7 @@ YELLOW_PROC PROC
 	MOV Current_TL_State, Yellow 	; Sets Current_TL_State to Yellow for internal tracking of current light.
 	MOV AX, TL_Yellow_Cmd			; Sets AX to Yellow command for the CMD_TRAFFIC_LIGHT procedure
 	CALL CMD_TRAFFIC_LIGHT			; Sends the ligt set in AX to the configured traffic light port
-    MOV CX, 5           			; 5 units of time
+    MOV CX, YELLOW_TIME             ;3 units of time
 
 YELLOW_LOOP:
     CALL USER_INPUT					; Check for user input
@@ -104,22 +112,23 @@ RED_PROC PROC
 	MOV Current_TL_State, Red 		; Sets Current_TL_State to Red for internal tracking of current light.
 	MOV AX, TL_Red_Cmd				; Sets AX to Red command for the CMD_TRAFFIC_LIGHT procedure
 	CALL CMD_TRAFFIC_LIGHT			; Sends the ligt set in AX to the configured traffic light port
-    MOV CX, 15						; 15 units of time
+    MOV CX, RED_TIME				; 15 units of time
     
     ; Check if an emergency or pedestrian was triggered
     CMP EMERGENCY_PENDING, 1
     JNE CHECK_PED_PASS_PENDING
-    ADD CX, 20						; Add time for emergency first responders
+    
+    ADD CX, EMERGENCY_TIME
     MOV EMERGENCY_PENDING, 0
     MOV PEDESTRIAN_PASS_PENDING, 0 	; Clear pedestrian too if both were set
-    JMP RED_LOOP
+    JMP RED_LOOP 
 
 CHECK_PED_PASS_PENDING:
     ; Check if a pedestrian is waiting, otherwise normal red
     CMP PEDESTRIAN_PASS_PENDING, 1
     JNE RED_LOOP
 
-    ADD CX, 10         	            ; Add extra time for the waiting pedestrian
+    ADD CX, PED_TIME         	    ; Add extra time for the waiting pedestrian
     MOV PEDESTRIAN_PASS_PENDING, 0  ; Clear the flag
 
 RED_LOOP:
@@ -191,7 +200,6 @@ EMERGENCY PROC
 	; Check current state in Current_TL_State
     CMP Current_TL_State, Red       ; Internal state tracking check
 	JE RED_EMER
-    ; check for yellow - see paired comment just below   TODO
     
     ; If Green or Yellow, speed up transition to Red
     MOV CX, 1
@@ -200,7 +208,7 @@ EMERGENCY PROC
 
 RED_EMER:
     ; If already Red, stay Red longer
-    ADD CX, 20
+    ADD CX, EMERGENCY_TIME
     RET
 EMERGENCY ENDP
 
@@ -208,11 +216,11 @@ EMERGENCY ENDP
 PEDESTRIAN PROC
     ; Check current state in Current_TL_State
     CMP Current_TL_State, Green
-	JE GREEN_PED                        ; Jump for green
+	JE GREEN_PED
     CMP Current_TL_State, Yellow
-	JE YELLOW_PED                       ; Jump for yellow
+	JE YELLOW_PED
     CMP Current_TL_State, Red
-	JE RED_PED                          ; Jump for red
+	JE RED_PED
     RET
 
 GREEN_PED:
@@ -227,7 +235,7 @@ YELLOW_PED:
 
 RED_PED:
     ; Red: stay red longer for safe crossing
-    ADD CX, 10
+    ADD CX, PED_TIME
     RET
 PEDESTRIAN ENDP
 
