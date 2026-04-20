@@ -170,7 +170,7 @@ USER_INPUT ENDP
 
 ;Exit program
 EXIT_PROGRAM:
-    HLT					; halt the processor OR SOMETHING BETTER TODO
+    HLT					; halt the processor
 
 ;Delay - Software delay loop for timing, rough second
 DELAY PROC
@@ -193,7 +193,7 @@ EMERGENCY PROC
 	JE RED_EMER
     ; check for yellow - see paired comment just below   TODO
     
-    ; If Green or Yellow, speed up transition to Red (YELLOW SHOULD BE THE SAME AS NORMAL  TODO)
+    ; If Green or Yellow, speed up transition to Red
     MOV CX, 1
     MOV EMERGENCY_PENDING, 1
     RET
@@ -208,11 +208,11 @@ EMERGENCY ENDP
 PEDESTRIAN PROC
     ; Check current state in Current_TL_State
     CMP Current_TL_State, Green
-	JE GREEN_PED
+	JE GREEN_PED                        ; Jump for green
     CMP Current_TL_State, Yellow
-	JE YELLOW_PED
+	JE YELLOW_PED                       ; Jump for yellow
     CMP Current_TL_State, Red
-	JE RED_PED
+	JE RED_PED                          ; Jump for red
     RET
 
 GREEN_PED:
