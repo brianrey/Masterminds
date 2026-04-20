@@ -10,22 +10,22 @@ ORG 100h
 
 ;Constants
 ; Internal Light colors, durations and states
-	Green EQU 2 
-	Yellow EQU 1
-	Red EQU 0
+	Green EQU 2                     ; Internal state tracking for Green
+	Yellow EQU 1                    ; Internal state tracking for Yellow
+	Red EQU 0                       ; Internal state tracking for Red
 	
-	GREEN_TIME EQU 10
-	YELLOW_TIME EQU 3
-	RED_TIME EQU 15
+	GREEN_TIME EQU 10               ; Green light nominal duration
+	YELLOW_TIME EQU 3               ; Yellow light nominal duration
+	RED_TIME EQU 15                 ; Red light nominal duration
 	
-	EMERGENCY_TIME EQU 20
-	PED_TIME EQU 10
+	EMERGENCY_TIME EQU 20           ; Emergency light operation, long Red for emergency vehicles.
+	PED_TIME EQU 10                 ; Pedestrian light operation, long Red for walking
 	
 	Delay_Time EQU 00002H			; Adjust this value for timing speed	
-	Current_TL_State DW 00000000b  ; 16 bits to store data in memory (planning for all lights)
+	Current_TL_State DW 00000000b   ; 16 bits to store data in memory (planning for all lights)
 	
 ; Traffic Light Controls (only one light as of now)
-    TL_Port EQU 4               ; Send to Port 4
+    TL_Port EQU 4                   ; Send to Port 4
 	TL_Green_Cmd EQU 00000100b      ; South light: Bit 2 = Green ON
 	TL_Yellow_Cmd EQU 00000010b     ; South light: Bit 1 = Yellow ON
 	TL_Red_Cmd EQU 00000001b        ; South light: Bit 0 = Red ON
@@ -33,9 +33,9 @@ ORG 100h
 .data
 	; Application Messages
     app_welcome DB 'Traffic Light Controller', 0DH, 0AH, '$'
-    app_description DB 'Designed to control a single traffic light and handle Pedestrian and Emergency situations.', 0DH, 0AH, '$'
+    app_description DB 'Designed to control a single traffic light nominal operations,', 0DH, 0AH, 'handle Pedestrian and Emergency situations.', 0DH, 0AH, '$'
     app_authors DB 'Created by Masterminds: Connor, Brian, Wyatt', 0DH, 0AH, '$'
-    app_initialized DB 'Application Initialized. Waiting for input...', 0DH, 0AH, '$'
+    app_initialized DB 'Application Initialized. (p = pedestrian, e = emergency, q = quit)', 0DH, 0AH, 'Waiting for input...', 0DH, 0AH, '$'
 
 	; Application Variables
     PEDESTRIAN_PASS_PENDING DB 0 ; 0 = None, 1 = Waiting for Red light so it can be lengthened
@@ -198,45 +198,45 @@ DELAY ENDP
 ;Emergency - Process transition for emergency
 EMERGENCY PROC
 	; Check current state in Current_TL_State
-    CMP Current_TL_State, Red       ; Internal state tracking check
-	JE RED_EMER
+        CMP Current_TL_State, Red       ; Internal state tracking check
+    	JE RED_EMER
+        
+        ; If Green or Yellow, speed up transition to Red
+        MOV CX, 1
+        MOV EMERGENCY_PENDING, 1
+        RET
     
-    ; If Green or Yellow, speed up transition to Red
-    MOV CX, 1
-    MOV EMERGENCY_PENDING, 1
-    RET
-
-RED_EMER:
-    ; If already Red, stay Red longer
-    ADD CX, EMERGENCY_TIME
-    RET
+    RED_EMER:
+        ; If already Red, stay Red longer
+        ADD CX, EMERGENCY_TIME
+        RET
 EMERGENCY ENDP
 
 ;Pedestrian - Adjust current timing based on current light color. Reduce time to red and increase red.
 PEDESTRIAN PROC
     ; Check current state in Current_TL_State
-    CMP Current_TL_State, Green
-	JE GREEN_PED
-    CMP Current_TL_State, Yellow
-	JE YELLOW_PED
-    CMP Current_TL_State, Red
-	JE RED_PED
-    RET
-
-GREEN_PED:
-    ; Shorten green time to end soon
-    MOV CX, 1 
-    MOV PEDESTRIAN_PASS_PENDING, 1 		; Mark that Red should be longer later
-    RET
-
-YELLOW_PED:
-    ; Yellow is already short
-    RET
-
-RED_PED:
-    ; Red: stay red longer for safe crossing
-    ADD CX, PED_TIME
-    RET
+        CMP Current_TL_State, Green
+    	JE GREEN_PED
+        CMP Current_TL_State, Yellow
+    	JE YELLOW_PED
+        CMP Current_TL_State, Red
+    	JE RED_PED
+        RET
+    
+    GREEN_PED:
+        ; Shorten green time to end soon
+        MOV CX, 1 
+        MOV PEDESTRIAN_PASS_PENDING, 1 		; Mark that Red should be longer later
+        RET
+    
+    YELLOW_PED:
+        ; Yellow is already short
+        RET
+    
+    RED_PED:
+        ; Red: stay red longer for safe crossing
+        ADD CX, PED_TIME
+        RET
 PEDESTRIAN ENDP
 
 ;Traffic Light Command - Send the color command to the traffic light (caller sets AX to desired color prior to calling this procedure).
