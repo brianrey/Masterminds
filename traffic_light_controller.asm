@@ -21,14 +21,22 @@ ORG 100h
 	EMERGENCY_TIME EQU 20           ; Emergency light operation, long Red for emergency vehicles.
 	PED_TIME EQU 10                 ; Pedestrian light operation, long Red for walking
 	
+	NS_DIR EQU 0                    ; Stored value for NS direction
+	WE_DIR EQU 1                    ; Vice versa for WE 
+	
 	Delay_Time EQU 00002H			; Adjust this value for timing speed	
 	Current_TL_State DW 00000000b   ; 16 bits to store data in memory (planning for all lights)
+	Current_Dir DB NS_DIR           ; Store current light direction (starts on NS)
 	
-; Traffic Light Controls (only one light as of now)
+; Traffic Light Controls (only two lights as of now)
     TL_Port EQU 4                   ; Send to Port 4
-	TL_Green_Cmd EQU 00000100b      ; South light: Bit 2 = Green ON
-	TL_Yellow_Cmd EQU 00000010b     ; South light: Bit 1 = Yellow ON
-	TL_Red_Cmd EQU 00000001b        ; South light: Bit 0 = Red ON
+	TL_NSGreen_Cmd EQU 000100000100b      ; North/South light: Bit 2/8 = Green ON
+	TL_NSYellow_Cmd EQU 00010000010b     ; North/South light: Bit 1/7 = Yellow ON
+	TL_NSRed_Cmd EQU 00001000001b        ; North/South light: Bit 0/6 = Red ON
+                                                                
+    TL_WEGreen_Cmd EQU 100000100000b     ;West/East light: Bit 11/5 - Green ON
+    TL_WEYellow_Cmd EQU 010000010000b    ;West/East light: Bit 10/4 = Yellow ON
+    TL_WERed_Cmd EQU 001000001000b       ;West/East light: Bit 9/3 = Red ON
     
 .data
 	; Application Messages
@@ -82,9 +90,21 @@ MAIN ENDP
 ;Green - Process light transition, light duration, and check for user input.
 GREEN_PROC PROC
     MOV Current_TL_State, Green 	; Sets Current_TL_State to Green for internal tracking of current light.
-	MOV AX, TL_Green_Cmd			; Sets AX to Green command for the CMD_TRAFFIC_LIGHT procedure
-	CALL CMD_TRAFFIC_LIGHT			; Sends the ligt set in AX to the configured traffic light port
-    MOV CX, GREEN_TIME          	; 10 units of time
+	
+	CMP Current_Dir, NS_DIR
+	
+	JE NS_GREEN
+	
+	WE_GREEN:
+	    MOV AX, TL_WEGreen_Cmd
+	    JMP SET_GREEN
+	
+	NS_GREEN: 
+	    MOV AX, TL_NSGreen_Cmd
+	
+	SET_GREEN:
+	    CALL CMD_TRAFFIC_LIGHT
+	    MOV CX, GREEN_TIME
 
 GREEN_LOOP:
     CALL USER_INPUT     			; Check for user input
@@ -95,10 +115,18 @@ GREEN_PROC ENDP
 
 ;Yellow - Process light transition, light duration, and check for user input.
 YELLOW_PROC PROC
-	MOV Current_TL_State, Yellow 	; Sets Current_TL_State to Yellow for internal tracking of current light.
-	MOV AX, TL_Yellow_Cmd			; Sets AX to Yellow command for the CMD_TRAFFIC_LIGHT procedure
-	CALL CMD_TRAFFIC_LIGHT			; Sends the ligt set in AX to the configured traffic light port
-    MOV CX, YELLOW_TIME             ;3 units of time
+	CMP Current_Dir, NS_DIR
+    JE NS_YELLOW
+
+    MOV AX, TL_WEYellow_Cmd
+    JMP SET_YELLOW
+
+    NS_YELLOW:
+        MOV AX, TL_NSYellow_Cmd
+    
+    SET_YELLOW:
+        CALL CMD_TRAFFIC_LIGHT
+        MOV CX, YELLOW_TIME
 
 YELLOW_LOOP:
     CALL USER_INPUT					; Check for user input
@@ -109,10 +137,18 @@ YELLOW_PROC ENDP
 
 ;Red - Process light transition, light duration, and check for user input.
 RED_PROC PROC
-	MOV Current_TL_State, Red 		; Sets Current_TL_State to Red for internal tracking of current light.
-	MOV AX, TL_Red_Cmd				; Sets AX to Red command for the CMD_TRAFFIC_LIGHT procedure
-	CALL CMD_TRAFFIC_LIGHT			; Sends the ligt set in AX to the configured traffic light port
-    MOV CX, RED_TIME				; 15 units of time
+	CMP Current_Dir, NS_DIR
+    JE NS_RED
+
+    MOV AX, TL_WERed_Cmd
+    JMP SET_RED
+
+    NS_RED:
+        MOV AX, TL_NSRed_Cmd
+    
+    SET_RED:
+        CALL CMD_TRAFFIC_LIGHT
+        MOV CX, RED_TIME
     
     ; Check if an emergency or pedestrian was triggered
     CMP EMERGENCY_PENDING, 1
@@ -134,8 +170,20 @@ CHECK_PED_PASS_PENDING:
 RED_LOOP:
     CALL USER_INPUT		; Check for user input
     CALL DELAY          ; Call time delay for light
-    LOOP RED_LOOP		; Decrements CX and repeats
-	RET
+    LOOP RED_LOOP		; Decrements CX and repeats 
+
+    CMP Current_Dir, NS_DIR
+    JE SWITCH  
+    
+    MOV Current_Dir, NS_DIR
+    JMP DONE
+    
+SWITCH:
+    MOV Current_Dir, WE_DIR
+
+DONE:
+    RET
+    
 RED_PROC ENDP
 
 ;Input Check - Check for user char input and compare to known input controls (p, e, q), Non-blocking
