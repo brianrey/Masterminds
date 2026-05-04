@@ -26,7 +26,7 @@ ORG 100h
 	
 	Delay_Time EQU 00002H			; Adjust this value for timing speed	
 	Current_TL_State DW 00000000b   ; 16 bits to store data in memory (planning for all lights)
-	Current_Dir DB NS_DIR           ; Store current light direction (starts on NS)
+	Current_Dir DB 'NS_DIR'           ; Store current light direction (starts on NS)
 	
 ; Traffic Light Controls (only two lights as of now)
     TL_Port EQU 4                   ; Send to Port 4
