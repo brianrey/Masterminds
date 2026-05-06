@@ -16,7 +16,7 @@ ORG 100h
 	
 	GREEN_TIME EQU 10               ; Green light nominal duration
 	YELLOW_TIME EQU 3               ; Yellow light nominal duration
-	RED_TIME EQU 15                 ; Red light nominal duration
+	RED_TIME EQU 3                  ; Red light nominal duration
 	
 	EMERGENCY_TIME EQU 20           ; Emergency light operation, long Red for emergency vehicles.
 	PED_TIME EQU 10                 ; Pedestrian light operation, long Red for walking
@@ -29,14 +29,14 @@ ORG 100h
 	Current_Dir DB 'NS_DIR'           ; Store current light direction (starts on NS)
 	
 ; Traffic Light Controls (only two lights as of now)
-    TL_Port EQU 4                   ; Send to Port 4
-	TL_NSGreen_Cmd EQU 000100000100b      ; North/South light: Bit 2/8 = Green ON
-	TL_NSYellow_Cmd EQU 00010000010b     ; North/South light: Bit 1/7 = Yellow ON
-	TL_NSRed_Cmd EQU 00001000001b        ; North/South light: Bit 0/6 = Red ON
-                                                                
-    TL_WEGreen_Cmd EQU 100000100000b     ;West/East light: Bit 11/5 - Green ON
-    TL_WEYellow_Cmd EQU 010000010000b    ;West/East light: Bit 10/4 = Yellow ON
-    TL_WERed_Cmd EQU 001000001000b       ;West/East light: Bit 9/3 = Red ON
+    TL_Port EQU 4                           ; Send to Port 4
+	TL_NSGreen_Cmd EQU 001100001100b        ; North/South light: Bit 2/8 = Green ON   wwwNNNeeeSSSb
+	TL_NSYellow_Cmd EQU 001010001010b        ; North/South light: Bit 1/7 = Yellow ON
+	TL_NSRed_Cmd EQU 001001001001b           ; North/South light: Bit 0/6 = Red ON
+                                                                    
+    TL_WEGreen_Cmd EQU 100001100001b        ;West/East light: Bit 11/5 - Green ON
+    TL_WEYellow_Cmd EQU 010001010001b       ;West/East light: Bit 10/4 = Yellow ON
+    TL_WERed_Cmd EQU 001001001001b          ;West/East light: Bit 9/3 = Red ON
     
 .data
 	; Application Messages
@@ -168,6 +168,8 @@ CHECK_PED_PASS_PENDING:
     MOV PEDESTRIAN_PASS_PENDING, 0  ; Clear the flag
 
 RED_LOOP:
+    CALL CMD_LED_WITH_CX    ; try to get the led to update as cx is changed for the ped loop. mimic the count down.
+    
     CALL USER_INPUT		; Check for user input
     CALL DELAY          ; Call time delay for light
     LOOP RED_LOOP		; Decrements CX and repeats 
@@ -182,6 +184,7 @@ SWITCH:
     MOV Current_Dir, WE_DIR
 
 DONE:
+    CALL CMD_LED_WITH_CX
     RET
     
 RED_PROC ENDP
@@ -292,3 +295,9 @@ CMD_TRAFFIC_LIGHT PROC
 	OUT TL_Port, AX
 	RET
 CMD_TRAFFIC_LIGHT ENDP
+
+CMD_LED_WITH_CX PROC
+    MOV AX, CX
+    OUT 199, AX
+    RET
+CMD_LED_WITH_CX ENDP
