@@ -166,11 +166,15 @@ CHECK_PED_PASS_PENDING:
     JNE RED_LOOP
 
     ADD CX, PED_TIME         	    ; Add extra time for the waiting pedestrian
-    MOV PEDESTRIAN_PASS_PENDING, 0  ; Clear the flag
+    
 
 RED_LOOP:
+    CMP PEDESTRIAN_PASS_PENDING, 1
+    JNE MAIN_RED_LOOP               ; jump if not ped_pass_pending
+    
     CALL CMD_LED_WITH_CX    ; try to get the led to update as cx is changed for the ped loop. mimic the count down.
     
+MAIN_RED_LOOP:                                                                                                      
     CALL USER_INPUT		; Check for user input
     CALL DELAY          ; Call time delay for light
     LOOP RED_LOOP		; Decrements CX and repeats 
@@ -186,6 +190,7 @@ SWITCH:
 
 DONE:
     CALL CMD_LED_WITH_CX  ; update CX to zero to show count complete
+    MOV PEDESTRIAN_PASS_PENDING, 0  ; Clear the flag, if needed
     RET
     
 RED_PROC ENDP
