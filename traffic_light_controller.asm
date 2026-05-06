@@ -4,6 +4,7 @@
 
 ; Required Virtual Devices
 #start=Traffic_Lights.exe#
+#start=LED_Display.exe#
 
 ; Memory initialization
 ORG 100h 
@@ -184,7 +185,7 @@ SWITCH:
     MOV Current_Dir, WE_DIR
 
 DONE:
-    CALL CMD_LED_WITH_CX
+    CALL CMD_LED_WITH_CX  ; update CX to zero to show count complete
     RET
     
 RED_PROC ENDP
