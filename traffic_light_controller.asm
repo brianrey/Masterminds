@@ -27,10 +27,13 @@ ORG 100h
 	
 	Delay_Time EQU 00002H			; Adjust this value for timing speed	
 	Current_TL_State DW 00000000b   ; 16 bits to store data in memory (planning for all lights)
-	Current_Dir DB 'NS_DIR'           ; Store current light direction (starts on NS)
+	Current_Dir DB 'NS_DIR'         ; Store current light direction (starts on NS)
+	
+	LED_Initial_Val EQU 0           ; Initial value for LED to clear any previous values.
 	
 ; Traffic Light Controls (only two lights as of now)
     TL_Port EQU 4                           ; Send to Port 4
+    TL_Initial_Val EQU 000000000000b        ; All zeros initial value to clear out any existing value
 	TL_NSGreen_Cmd EQU 001100001100b        ; North/South light: Bit 2/8 = Green ON   wwwNNNeeeSSSb
 	TL_NSYellow_Cmd EQU 001010001010b        ; North/South light: Bit 1/7 = Yellow ON
 	TL_NSRed_Cmd EQU 001001001001b           ; North/South light: Bit 0/6 = Red ON
@@ -53,10 +56,16 @@ ORG 100h
 .code
     JMP MAIN            ; Skip procedures and start at MAIN (allows initialize and welcome content to be at the top for clairity)
 
-;Initialize - Initialize the data segment
+;Initialize - Initialize the data segment and virtual devices
 INITIALIZE PROC
     MOV AX, @DATA
     MOV DS, AX
+    
+    ; initialize the virtual devices
+    MOV AX, TL_Initial_Val
+    CALL CMD_TRAFFIC_LIGHT
+    MOV CX, LED_Initial_Val
+    CALL CMD_LED_WITH_CX
 
     RET
 INITIALIZE ENDP
